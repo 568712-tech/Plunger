@@ -13,9 +13,15 @@ add_executable(Plunger
 	src/renderer/Camera.cpp
 	src/renderer/Mesh.cpp
 	src/renderer/OpenGLFunctions.cpp
+	src/renderer/PartRenderer.cpp
 	src/renderer/Renderer.cpp
 	src/renderer/Shader.cpp
 	src/renderer/Texture.cpp
+	src/scene/ModelLoader.cpp
+	src/scene/GltfModel.cpp
+	src/scene/PartMapLoader.cpp
+	src/scene/Scene.cpp
+	src/scene/Transform.cpp
 )
 
 target_include_directories(Plunger PRIVATE src)

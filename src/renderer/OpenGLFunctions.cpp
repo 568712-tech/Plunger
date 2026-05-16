@@ -34,7 +34,9 @@ BufferDataProc bufferData = nullptr;
 DeleteBuffersProc deleteBuffers = nullptr;
 EnableVertexAttribArrayProc enableVertexAttribArray = nullptr;
 VertexAttribPointerProc vertexAttribPointer = nullptr;
+VertexAttribDivisorProc vertexAttribDivisor = nullptr;
 DrawElementsProc drawElements = nullptr;
+DrawElementsInstancedProc drawElementsInstanced = nullptr;
 
 GenTexturesProc genTextures = nullptr;
 BindTextureProc bindTexture = nullptr;
@@ -81,7 +83,9 @@ bool load()
     deleteBuffers = loadFunction<DeleteBuffersProc>("glDeleteBuffers");
     enableVertexAttribArray = loadFunction<EnableVertexAttribArrayProc>("glEnableVertexAttribArray");
     vertexAttribPointer = loadFunction<VertexAttribPointerProc>("glVertexAttribPointer");
+    vertexAttribDivisor = loadFunction<VertexAttribDivisorProc>("glVertexAttribDivisor");
     drawElements = loadFunction<DrawElementsProc>("glDrawElements");
+    drawElementsInstanced = loadFunction<DrawElementsInstancedProc>("glDrawElementsInstanced");
 
     genTextures = loadFunction<GenTexturesProc>("glGenTextures");
     bindTexture = loadFunction<BindTextureProc>("glBindTexture");
@@ -95,7 +99,7 @@ bool load()
            createProgram && attachShader && linkProgram && getProgramiv && getProgramInfoLog && useProgram &&
            deleteProgram && getUniformLocation && uniformMatrix4fv && uniform3f && uniform1f && uniform1i && genVertexArrays &&
            bindVertexArray && deleteVertexArrays && genBuffers && bindBuffer && bufferData && deleteBuffers &&
-           enableVertexAttribArray && vertexAttribPointer && drawElements && genTextures && bindTexture && texImage2D &&
+           enableVertexAttribArray && vertexAttribPointer && vertexAttribDivisor && drawElements && drawElementsInstanced && genTextures && bindTexture && texImage2D &&
            texParameteri && generateMipmap && activeTexture && deleteTextures;
 }
 

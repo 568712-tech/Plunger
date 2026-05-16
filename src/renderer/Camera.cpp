@@ -9,6 +9,7 @@ void Camera::setPosition(const Vec3& position)
     m_position = position;
 }
 
+
 void Camera::setYaw(float yawRadians)
 {
     m_yaw = yawRadians;

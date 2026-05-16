@@ -31,6 +31,9 @@ constexpr GLenum GL_ELEMENT_ARRAY_BUFFER = 0x8893;
 #ifndef GL_STATIC_DRAW
 constexpr GLenum GL_STATIC_DRAW = 0x88E4;
 #endif
+#ifndef GL_DYNAMIC_DRAW
+constexpr GLenum GL_DYNAMIC_DRAW = 0x88E8;
+#endif
 #ifndef GL_FLOAT
 constexpr GLenum GL_FLOAT = 0x1406;
 #endif
@@ -104,7 +107,9 @@ using BufferDataProc = void (*)(GLenum, GLsizeiptr, const void*, GLenum);
 using DeleteBuffersProc = void (*)(GLsizei, const GLuint*);
 using EnableVertexAttribArrayProc = void (*)(GLuint);
 using VertexAttribPointerProc = void (*)(GLuint, GLint, GLenum, GLboolean, GLsizei, const void*);
+using VertexAttribDivisorProc = void (*)(GLuint, GLuint);
 using DrawElementsProc = void (*)(GLenum, GLsizei, GLenum, const void*);
+using DrawElementsInstancedProc = void (*)(GLenum, GLsizei, GLenum, const void*, GLsizei);
 
 using GenTexturesProc = void (*)(GLsizei, GLuint*);
 using BindTextureProc = void (*)(GLenum, GLuint);
@@ -142,7 +147,9 @@ extern BufferDataProc bufferData;
 extern DeleteBuffersProc deleteBuffers;
 extern EnableVertexAttribArrayProc enableVertexAttribArray;
 extern VertexAttribPointerProc vertexAttribPointer;
+extern VertexAttribDivisorProc vertexAttribDivisor;
 extern DrawElementsProc drawElements;
+extern DrawElementsInstancedProc drawElementsInstanced;
 
 extern GenTexturesProc genTextures;
 extern BindTextureProc bindTexture;

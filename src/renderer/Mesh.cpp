@@ -99,7 +99,7 @@ Mesh Mesh::createCube()
         20, 21, 22, 22, 23, 20,
     };
 
-    return Mesh(vertices, indices);
+    return Mesh::fromData(std::move(vertices), std::move(indices));
 }
 
 Mesh Mesh::createPlane(float size)
@@ -113,7 +113,7 @@ Mesh Mesh::createPlane(float size)
     };
 
     const std::vector<unsigned int> indices = {0, 1, 2, 2, 3, 0};
-    return Mesh(vertices, indices);
+    return Mesh::fromData(std::move(vertices), std::move(indices));
 }
 
 Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices)
@@ -121,6 +121,11 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices)
     , m_indices(std::move(indices))
 {
     upload();
+}
+
+Mesh Mesh::fromData(std::vector<Vertex> vertices, std::vector<unsigned int> indices)
+{
+    return Mesh(std::move(vertices), std::move(indices));
 }
 
 void Mesh::upload()

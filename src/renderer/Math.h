@@ -135,6 +135,18 @@ inline Mat4 rotateY(float radians)
     return matrix;
 }
 
+inline Mat4 rotateZ(float radians)
+{
+    Mat4 matrix = Mat4::identity();
+    const float c = std::cos(radians);
+    const float s = std::sin(radians);
+    matrix.values[0] = c;
+    matrix.values[1] = s;
+    matrix.values[4] = -s;
+    matrix.values[5] = c;
+    return matrix;
+}
+
 inline Mat4 perspective(float fieldOfViewRadians, float aspectRatio, float nearPlane, float farPlane)
 {
     const float tangent = std::tan(fieldOfViewRadians * 0.5f);
