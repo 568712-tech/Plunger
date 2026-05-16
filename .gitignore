@@ -1,0 +1,21 @@
+# Build directories
+/build
+/CMakeFiles
+/CMakeCache.txt
+/*.sln
+/*.vcxproj*
+/*.user
+/*.vcxproj.filters
+
+# Generated binaries
+/*.exe
+/*.dll
+/*.lib
+/*.obj
+/*.o
+/*.a
+/*.so
+/*.dylib
+
+# VS Code
+.vscode
