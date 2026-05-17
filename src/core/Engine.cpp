@@ -32,7 +32,7 @@ bool insideAabb(const Vec3& point, const Vec3& center, const Vec3& halfExtents)
 Engine::Engine()
 {
     m_contextSettings.depthBits = 24;
-    m_contextSettings.stencilBits = 8;
+    // m_contextSettings.stencilBits = 8;
     m_contextSettings.antiAliasingLevel = 4;
     m_contextSettings.majorVersion = 3;
     m_contextSettings.minorVersion = 3;
@@ -47,6 +47,8 @@ Engine::Engine()
     m_assetRoot = std::filesystem::current_path() / "assets";
     m_renderer.initialize(m_assetRoot);
     resetDemoRun();
+    // Create player character after renderer and scene are initialized
+    m_player = std::make_unique<Character>(m_renderer.scene(), m_spawnPosition, 0.0f);
     m_renderer.resize(m_window.getSize());
     logContextInfo();
 }
@@ -85,6 +87,11 @@ void Engine::processEvents()
                 toggleFullscreen();
             } else if (keyPressed->code == sf::Keyboard::Key::R) {
                 resetDemoRun();
+            } else if (keyPressed->code == sf::Keyboard::Key::F5) {
+                m_firstPersonMode = !m_firstPersonMode;
+                if (m_player) {
+                    m_player->setVisible(!m_firstPersonMode);
+                }
             }
         }
     }
@@ -96,7 +103,37 @@ void Engine::update(float deltaTime)
 {
     m_simulationTime += deltaTime;
     m_cameraController.update(m_renderer.camera(), m_input, deltaTime);
+    if (m_player) {
+        m_player->update(deltaTime, m_simulationTime, m_input, m_renderer.camera());
+    }
     m_renderer.update(deltaTime, m_simulationTime);
+
+    // Camera positioning: first-person or third-person follow camera
+    if (m_player) {
+        const Vec3 playerPos = m_player->position();
+        Camera& camera = m_renderer.camera();
+
+        if (m_firstPersonMode) {
+            // First-person: camera at player position (at head height)
+            const float headHeight = 1.6f;
+            camera.setPosition({playerPos.x, playerPos.y + headHeight, playerPos.z});
+        } else {
+            // Third-person: position the camera behind the player and look at them
+            const float followDistance = 3.0f;
+            const float followHeight = 2.0f;
+            Vec3 camForward = camera.forward();
+            camForward.y = 0.f;
+            const float len = std::sqrt(camForward.x * camForward.x + camForward.z * camForward.z);
+            if (len < 1e-5f) {
+                camForward = {0.f, 0.f, -1.f};
+            } else {
+                camForward.x /= len;
+                camForward.z /= len;
+            }
+            Vec3 desiredPos = {playerPos.x - camForward.x * followDistance, playerPos.y + followHeight, playerPos.z - camForward.z * followDistance};
+            camera.setPosition(desiredPos);
+        }
+    }
 
     if (!m_demoFinished && reachedGoal()) {
         m_demoFinished = true;
@@ -123,6 +160,9 @@ void Engine::resetDemoRun()
     m_finishTime = 0.f;
     m_accumulator = 0.f;
     m_demoFinished = false;
+    if (m_player) {
+        m_player->setPosition(m_spawnPosition);
+    }
     updateWindowTitle();
 }
 
@@ -137,7 +177,7 @@ void Engine::updateWindowTitle()
         title << " | Time " << std::fixed << std::setprecision(2) << m_simulationTime << "s";
     }
 
-    title << " | Reach the glowing finish gate | R reset | F11 fullscreen";
+    title << " | Reach the glowing finish gate | R reset | F11 fullscreen | F5 toggle view (" << (m_firstPersonMode ? "1st" : "3rd") << " person)";
     m_window.setTitle(title.str());
 }
 

@@ -8,6 +8,7 @@ void Input::beginFrame(sf::Window& window)
 
     for (std::size_t index = 0; index < static_cast<std::size_t>(sf::Keyboard::KeyCount); ++index) {
         m_keys[index] = sf::Keyboard::isKeyPressed(static_cast<sf::Keyboard::Key>(index));
+        m_keysPressed[index] = false;
     }
 
     updateMouseCapture(window);
@@ -39,6 +40,7 @@ void Input::processEvent(const sf::Event& event)
 {
     if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
         m_keys[static_cast<std::size_t>(keyPressed->code)] = true;
+        m_keysPressed[static_cast<std::size_t>(keyPressed->code)] = true;
     } else if (const auto* keyReleased = event.getIf<sf::Event::KeyReleased>()) {
         m_keys[static_cast<std::size_t>(keyReleased->code)] = false;
     } else if (const auto* mousePressed = event.getIf<sf::Event::MouseButtonPressed>()) {
@@ -57,6 +59,16 @@ bool Input::isKeyDown(sf::Keyboard::Key key) const
     }
 
     return m_keys[index];
+}
+
+bool Input::isKeyPressed(sf::Keyboard::Key key) const
+{
+    const std::size_t index = static_cast<std::size_t>(key);
+    if (index >= static_cast<std::size_t>(sf::Keyboard::KeyCount)) {
+        return false;
+    }
+
+    return m_keysPressed[index];
 }
 
 Vec2 Input::mouseDelta() const

@@ -38,6 +38,11 @@ public:
     {
         return m_scene;
     }
+    // Non-const access to scene for runtime modification of parts/entities
+    Scene& scene()
+    {
+        return m_scene;
+    }
 
 private:
     void initializeShadowResources();

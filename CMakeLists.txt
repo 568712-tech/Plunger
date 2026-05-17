@@ -21,6 +21,7 @@ add_executable(Plunger
 	src/renderer/Renderer.cpp
 	src/renderer/Shader.cpp
 	src/renderer/Texture.cpp
+	src/game/Character.cpp
 	src/scene/ModelLoader.cpp
 	src/scene/GltfModel.cpp
 	src/scene/PartMapLoader.cpp
