@@ -3,6 +3,8 @@
 in vec3 vWorldPosition;
 in vec3 vNormal;
 in vec3 vColor;
+in float vRoughness;
+in float vMetallic;
 in vec4 vLightSpacePosition;
 
 #define MAX_POINT_LIGHTS 8
@@ -22,8 +24,6 @@ uniform vec3 uAmbientGround;
 uniform vec3 uFogColor;
 uniform float uFogNear;
 uniform float uFogFar;
-uniform float uMaterialRoughness;
-uniform float uMaterialMetallic;
 uniform int uPointLightCount;
 uniform PointLight uPointLights[MAX_POINT_LIGHTS];
 
@@ -39,10 +39,12 @@ float shadowFactor(vec3 normal, vec3 sunDirection)
     }
 
     float currentDepth = projected.z;
-    float bias = max(0.0015 * (1.0 - dot(normal, sunDirection)), 0.0007);
+    // Adaptive bias based on light angle: steeper angles need more bias
+    float bias = max(0.002 * (1.0 - dot(normal, sunDirection)), 0.0005);
     float shadow = 0.0;
     vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
 
+    // PCF with 3x3 kernel
     for (int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y) {
             float closestDepth = texture(uShadowMap, projected.xy + vec2(float(x), float(y)) * texelSize).r;
@@ -73,10 +75,10 @@ void main()
     vec3 ambientLight = mix(uAmbientGround, uAmbientSky, clamp(ndotUp, 0.0, 1.0));
     vec3 color = vColor * ambientLight;
 
-    float roughness = clamp(uMaterialRoughness, 0.04, 1.0);
-    float metallic = clamp(uMaterialMetallic, 0.0, 1.0);
-    float specPower = mix(96.0, 8.0, roughness);
-    float specScale = mix(0.04, 1.0, metallic);
+    float roughness = clamp(vRoughness, 0.18, 1.0);
+    float metallic = clamp(vMetallic, 0.0, 1.0);
+    float specPower = mix(48.0, 8.0, roughness);
+    float specScale = mix(0.04, 0.35, metallic) * mix(1.0, 0.55, 1.0 - roughness);
 
     float sunDiffuse = max(dot(normal, sunDirection), 0.0);
     float shadow = shadowFactor(normal, sunDirection);
@@ -100,9 +102,9 @@ void main()
         vec3 halfVector = normalize(lightDirection + viewDirection);
         float specular = pow(max(dot(normal, halfVector), 0.0), specPower) * specScale;
 
-        vec3 lightColor = uPointLights[index].color * (uPointLights[index].intensity * attenuation);
+        vec3 lightColor = uPointLights[index].color * min(uPointLights[index].intensity * attenuation, 1.2);
         color += vColor * lightColor * diffuse;
-        color += lightColor * (0.2 * specular);
+        color += lightColor * (0.12 * specular);
     }
 
     float fogFactor = smoothstep(uFogNear, uFogFar, length(uCameraPosition - vWorldPosition));

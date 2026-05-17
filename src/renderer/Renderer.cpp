@@ -1,12 +1,8 @@
 #include "renderer/Renderer.h"
 
 #include "renderer/OpenGLFunctions.h"
-#include "scene/ModelLoader.h"
-
 #include <cmath>
-#include <filesystem>
 #include <stdexcept>
-#include <utility>
 
 namespace plunger {
 
@@ -51,9 +47,13 @@ void Renderer::initializeShadowResources()
 Mat4 Renderer::buildLightSpaceMatrix() const
 {
     const Vec3 lightDirection = normalize(m_lighting.lightDirection);
-    const Vec3 lightPosition = lightDirection * -18.f;
-    const Mat4 lightView = lookAt(lightPosition, {0.f, 0.f, 2.f}, {0.f, 1.f, 0.f});
-    const Mat4 lightProjection = orthographic(-20.f, 20.f, -20.f, 20.f, 1.f, 45.f);
+    // Position light further back to cover more of the scene
+    const Vec3 lightPosition = lightDirection * -35.f;
+    // Focus on center of the obstacle course
+    const Vec3 lookAtPoint = {0.f, 0.f, 15.f};
+    const Mat4 lightView = lookAt(lightPosition, lookAtPoint, {0.f, 1.f, 0.f});
+    // Increased bounds to cover the entire obstacle course from Z: -30 to Z: 62
+    const Mat4 lightProjection = orthographic(-30.f, 30.f, -15.f, 25.f, 1.f, 80.f);
     return multiply(lightProjection, lightView);
 }
 
@@ -94,17 +94,6 @@ void Renderer::initialize(const std::filesystem::path& assetRoot)
     m_partShadowShader.loadFromFiles(m_assetRoot / "shaders" / "shadow_depth_part.vert", m_assetRoot / "shaders" / "shadow_depth.frag");
     initializeShadowResources();
 
-    const std::filesystem::path gltfPath = m_assetRoot / "models" / "cube.gltf";
-    if (std::filesystem::exists(gltfPath)) {
-        GltfModel gltfModel = ModelLoader::loadGltf(gltfPath);
-        m_modelMesh = std::move(gltfModel.mesh);
-        if (!gltfModel.materials.empty()) {
-            m_modelMaterial = gltfModel.materials.front().material;
-        }
-    } else {
-        m_modelMesh = ModelLoader::loadObj(m_assetRoot / "models" / "cube.obj");
-        m_modelMaterial.baseColor = {1.f, 1.f, 1.f};
-    }
     m_floorMesh = Mesh::createPlane(30.f);
     m_partRenderer.initialize(m_scene, m_assetRoot, m_assetRoot / "maps" / "demo.json");
 
@@ -125,54 +114,6 @@ void Renderer::initialize(const std::filesystem::path& assetRoot)
     MeshRenderer& floorRenderer = m_scene.addMeshRenderer(floorEntity, &m_floorMesh, &m_texture);
     floorRenderer.material.baseColor = {1.f, 1.f, 1.f};
 
-    m_centerCubeEntity = m_scene.createEntity();
-    Transform& cubeTransform = m_scene.addTransform(m_centerCubeEntity);
-    cubeTransform.position = {0.f, 0.75f, -2.5f};
-    cubeTransform.scaleFactor = {1.2f, 1.2f, 1.2f};
-    cubeTransform.rebuildLocalMatrix();
-    MeshRenderer& centerRenderer = m_scene.addMeshRenderer(m_centerCubeEntity, &m_modelMesh, &m_texture);
-    centerRenderer.material = m_modelMaterial;
-
-    m_satelliteCubeEntity = m_scene.createEntity();
-    Transform& satelliteTransform = m_scene.addTransform(m_satelliteCubeEntity);
-    satelliteTransform.position = {3.4f, 1.1f, 0.4f};
-    satelliteTransform.scaleFactor = {0.75f, 0.75f, 0.75f};
-    satelliteTransform.rebuildLocalMatrix();
-    MeshRenderer& satelliteRenderer = m_scene.addMeshRenderer(m_satelliteCubeEntity, &m_modelMesh, &m_texture);
-    satelliteRenderer.material = m_modelMaterial;
-
-    m_scene.setParent(m_satelliteCubeEntity, m_centerCubeEntity);
-
-    {
-        const EntityId leftTower = m_scene.createEntity();
-        Transform& leftTransform = m_scene.addTransform(leftTower);
-        leftTransform.position = {-5.0f, 1.2f, 4.5f};
-        leftTransform.scaleFactor = {1.0f, 2.4f, 1.0f};
-        leftTransform.rebuildLocalMatrix();
-        MeshRenderer& leftRenderer = m_scene.addMeshRenderer(leftTower, &m_modelMesh, &m_texture);
-        leftRenderer.material.baseColor = {0.45f, 0.65f, 0.85f};
-    }
-
-    {
-        const EntityId rightTower = m_scene.createEntity();
-        Transform& rightTransform = m_scene.addTransform(rightTower);
-        rightTransform.position = {5.0f, 1.2f, 4.5f};
-        rightTransform.scaleFactor = {1.0f, 2.4f, 1.0f};
-        rightTransform.rebuildLocalMatrix();
-        MeshRenderer& rightRenderer = m_scene.addMeshRenderer(rightTower, &m_modelMesh, &m_texture);
-        rightRenderer.material.baseColor = {0.78f, 0.64f, 0.35f};
-    }
-
-    {
-        const EntityId floatingCube = m_scene.createEntity();
-        Transform& floatingTransform = m_scene.addTransform(floatingCube);
-        floatingTransform.position = {0.f, 3.4f, 5.5f};
-        floatingTransform.scaleFactor = {0.8f, 0.8f, 0.8f};
-        floatingTransform.rebuildLocalMatrix();
-        MeshRenderer& floatingRenderer = m_scene.addMeshRenderer(floatingCube, &m_modelMesh, &m_texture);
-        floatingRenderer.material.baseColor = {0.96f, 0.74f, 0.32f};
-    }
-
     m_camera.setPosition({0.f, 3.4f, 10.5f});
     m_camera.setYaw(-1.57079633f);
     m_camera.setPitch(-0.16f);
@@ -192,7 +133,6 @@ void Renderer::reloadResources(const std::filesystem::path& assetRoot)
     m_partShadowShader.loadFromFiles(m_assetRoot / "shaders" / "shadow_depth_part.vert", m_assetRoot / "shaders" / "shadow_depth.frag");
     initializeShadowResources();
 
-    m_modelMesh.reload();
     m_floorMesh.reload();
     m_partRenderer.reloadResources(m_assetRoot);
 
@@ -217,19 +157,9 @@ void Renderer::resize(sf::Vector2u size)
     glViewport(0, 0, static_cast<GLsizei>(size.x), static_cast<GLsizei>(size.y));
 }
 
-void Renderer::update(float /*deltaTime*/, float timeSeconds)
+void Renderer::update(float /*deltaTime*/, float /*timeSeconds*/)
 {
-    updateSimulation(timeSeconds);
     m_scene.updateTransforms();
-}
-
-void Renderer::updateSimulation(float timeSeconds)
-{
-    if (Transform* cube = m_scene.getTransform(m_centerCubeEntity); cube != nullptr) {
-        cube->rotation = {timeSeconds * 0.45f, timeSeconds * 0.8f, 0.f};
-        cube->rebuildLocalMatrix();
-        m_scene.markDirty(m_centerCubeEntity);
-    }
 }
 
 void Renderer::render(float timeSeconds)

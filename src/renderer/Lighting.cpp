@@ -9,9 +9,9 @@ LightingEnvironment LightingEnvironment::createDemo()
     LightingEnvironment lighting;
     lighting.lightDirection = {-0.4f, -1.f, -0.25f};
     lighting.pointLightCount = 3;
-    lighting.pointLights[0] = {{0.f, 4.2f, -5.0f}, {1.00f, 0.93f, 0.80f}, 2.4f, 12.0f};
-    lighting.pointLights[1] = {{-6.0f, 3.0f, 5.0f}, {0.50f, 0.72f, 1.00f}, 1.8f, 10.0f};
-    lighting.pointLights[2] = {{6.0f, 3.0f, 5.0f}, {1.00f, 0.62f, 0.45f}, 1.8f, 10.0f};
+    lighting.pointLights[0] = {{0.f, 4.2f, -5.0f}, {1.00f, 0.93f, 0.80f}, 1.6f, 12.0f};
+    lighting.pointLights[1] = {{-6.0f, 3.0f, 5.0f}, {0.50f, 0.72f, 1.00f}, 1.25f, 10.0f};
+    lighting.pointLights[2] = {{6.0f, 3.0f, 5.0f}, {1.00f, 0.62f, 0.45f}, 1.25f, 10.0f};
     return lighting;
 }
 

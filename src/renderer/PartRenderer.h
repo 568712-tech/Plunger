@@ -6,6 +6,7 @@
 #include "scene/Components.h"
 #include "scene/Scene.h"
 
+#include <array>
 #include <filesystem>
 #include <vector>
 
@@ -26,24 +27,42 @@ public:
         GLuint shadowMapTexture,
         float timeSeconds) const;
 
-private:
+    struct Vertex {
+        Vec3 position;
+        Vec3 normal;
+        Vec2 texCoord;
+    };
+
     struct InstanceData {
         Mat4 model;
         Vec3 color;
-        float padding = 0.f;
+        float roughness = 1.f;
+        float metallic = 0.f;
+        float padding[3] {0.f, 0.f, 0.f};
     };
+
+    struct Geometry {
+        std::vector<Vertex> vertices;
+        std::vector<unsigned int> indices;
+        mutable std::vector<InstanceData> instances;
+        GLuint vertexArray = 0;
+        GLuint vertexBuffer = 0;
+        GLuint indexBuffer = 0;
+        GLuint instanceBuffer = 0;
+    };
+
+private:
+    static constexpr std::size_t shapeCount = static_cast<std::size_t>(PartShape::Count);
 
     void uploadGeometry();
     void uploadInstances(float timeSeconds) const;
     void releaseGeometry();
+    void uploadGeometryBuffers(Geometry& geometry);
+    void releaseGeometryBuffers(Geometry& geometry);
 
     Scene* m_scene = nullptr;
-    mutable std::vector<InstanceData> m_instances;
     Shader m_shader;
-    GLuint m_vertexArray = 0;
-    GLuint m_vertexBuffer = 0;
-    GLuint m_indexBuffer = 0;
-    GLuint m_instanceBuffer = 0;
+    mutable std::array<Geometry, shapeCount> m_geometries;
 };
 
 } // namespace plunger

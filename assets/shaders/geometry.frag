@@ -41,10 +41,12 @@ float shadowFactor(vec3 normal, vec3 sunDirection)
     }
 
     float currentDepth = projected.z;
-    float bias = max(0.0015 * (1.0 - dot(normal, sunDirection)), 0.0007);
+    // Adaptive bias based on light angle: steeper angles need more bias
+    float bias = max(0.002 * (1.0 - dot(normal, sunDirection)), 0.0005);
     float shadow = 0.0;
     vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
 
+    // PCF with 3x3 kernel
     for (int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y) {
             float closestDepth = texture(uShadowMap, projected.xy + vec2(float(x), float(y)) * texelSize).r;

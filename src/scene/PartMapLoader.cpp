@@ -8,6 +8,8 @@
 namespace plunger {
 namespace {
 
+constexpr float pi = 3.14159265f;
+
 std::string readTextFile(const std::filesystem::path& path)
 {
     std::ifstream file(path, std::ios::in | std::ios::binary);
@@ -55,6 +57,30 @@ float parseOptionalFloat(const std::string& objectText, const std::string& key, 
     return std::stof(match[1].str());
 }
 
+std::vector<float> parseOptionalFloatArray(const std::string& objectText, const std::string& key)
+{
+    const std::regex pattern("\"" + key + "\"\\s*:\\s*\\[([^\\]]*)\\]");
+    std::smatch match;
+    if (!std::regex_search(objectText, match, pattern)) {
+        return {};
+    }
+
+    std::vector<float> values;
+    std::istringstream stream(match[1].str());
+    std::string token;
+    while (std::getline(stream, token, ',')) {
+        const std::size_t begin = token.find_first_not_of(" \t\r\n");
+        if (begin == std::string::npos) {
+            continue;
+        }
+
+        const std::size_t end = token.find_last_not_of(" \t\r\n");
+        values.push_back(std::stof(token.substr(begin, end - begin + 1)));
+    }
+
+    return values;
+}
+
 std::string parseOptionalString(const std::string& objectText, const std::string& key)
 {
     const std::regex pattern("\"" + key + "\"\\s*:\\s*\"([^\"]*)\"");
@@ -64,6 +90,53 @@ std::string parseOptionalString(const std::string& objectText, const std::string
     }
 
     return match[1].str();
+}
+
+PartShape parsePartShape(const std::string& shapeName)
+{
+    if (shapeName.empty() || shapeName == "box") {
+        return PartShape::Box;
+    }
+    if (shapeName == "cylinder") {
+        return PartShape::Cylinder;
+    }
+    if (shapeName == "pyramid") {
+        return PartShape::Pyramid;
+    }
+    if (shapeName == "wedge") {
+        return PartShape::Wedge;
+    }
+    if (shapeName == "cone") {
+        return PartShape::Cone;
+    }
+    if (shapeName == "sphere") {
+        return PartShape::Sphere;
+    }
+    if (shapeName == "hemisphere" || shapeName == "half_sphere" || shapeName == "dome") {
+        return PartShape::Hemisphere;
+    }
+    if (shapeName == "torus" || shapeName == "donut") {
+        return PartShape::Torus;
+    }
+    if (shapeName == "tri_prism" || shapeName == "triangular_prism" || shapeName == "prism") {
+        return PartShape::TriPrism;
+    }
+    if (shapeName == "hex_prism" || shapeName == "hexagonal_prism") {
+        return PartShape::HexPrism;
+    }
+    if (shapeName == "octahedron" || shapeName == "diamond") {
+        return PartShape::Octahedron;
+    }
+    if (shapeName == "capsule" || shapeName == "pill") {
+        return PartShape::Capsule;
+    }
+
+    throw std::runtime_error("Unsupported part shape: " + shapeName);
+}
+
+float degreesToRadians(float degrees)
+{
+    return degrees * pi / 180.f;
 }
 
 std::string extractArrayBody(const std::string& text, const std::string& key)
@@ -140,6 +213,27 @@ std::vector<Part> PartMapLoader::loadJson(const std::filesystem::path& path)
 
         part.position = {position[0], position[1], position[2]};
         part.size = {size[0], size[1], size[2]};
+        const std::vector<float> rotation = parseOptionalFloatArray(objectText, "rotation");
+        if (!rotation.empty() && rotation.size() != 3u) {
+            throw std::runtime_error("Part rotation must be an array of length 3: " + path.string());
+        }
+
+        if (!rotation.empty()) {
+            part.rotation = {
+                degreesToRadians(rotation[0]),
+                degreesToRadians(rotation[1]),
+                degreesToRadians(rotation[2]),
+            };
+        }
+
+        part.bobAmplitude = parseOptionalFloat(objectText, "bobAmplitude", 0.f);
+        part.circleRadius = parseOptionalFloat(objectText, "circleRadius", 0.f);
+        part.circleSpeed = parseOptionalFloat(objectText, "circleSpeed", 1.0f);
+        part.circleAxisY = parseOptionalFloat(objectText, "circleAxisY", 1.0f) > 0.5f;
+        part.swayAmplitude = parseOptionalFloat(objectText, "swayAmplitude", 0.f);
+        part.swaySpeed = parseOptionalFloat(objectText, "swaySpeed", 1.0f);
+        part.spinSpeed = parseOptionalFloat(objectText, "spinSpeed", 0.f);
+        part.shape = parsePartShape(parseOptionalString(objectText, "shape"));
         part.material.baseColor = {color[0], color[1], color[2]};
         part.material.roughness = parseOptionalFloat(objectText, "roughness", 1.f);
         part.material.metallic = parseOptionalFloat(objectText, "metallic", 0.f);

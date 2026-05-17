@@ -29,6 +29,11 @@ public:
         return m_camera;
     }
 
+    const Camera& camera() const
+    {
+        return m_camera;
+    }
+
     const Scene& scene() const
     {
         return m_scene;
@@ -38,25 +43,20 @@ private:
     void initializeShadowResources();
     Mat4 buildLightSpaceMatrix() const;
     void renderShadowPass(const Mat4& lightSpace, float timeSeconds);
-    void updateSimulation(float timeSeconds);
 
     std::filesystem::path m_assetRoot;
     Shader m_shader;
     Shader m_shadowShader;
     Shader m_partShadowShader;
-    Mesh m_modelMesh;
     Mesh m_floorMesh;
     PartRenderer m_partRenderer;
     Texture m_texture;
     Camera m_camera;
     Scene m_scene;
     LightingEnvironment m_lighting;
-    Material m_modelMaterial;
     GLuint m_shadowFramebuffer = 0;
     GLuint m_shadowDepthTexture = 0;
     std::uint32_t m_shadowMapSize = 2048u;
-    EntityId m_centerCubeEntity = InvalidEntity;
-    EntityId m_satelliteCubeEntity = InvalidEntity;
     sf::Vector2u m_viewportSize {1u, 1u};
 };
 
