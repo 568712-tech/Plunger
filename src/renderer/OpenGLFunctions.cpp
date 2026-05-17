@@ -45,6 +45,12 @@ TexParameteriProc texParameteri = nullptr;
 GenerateMipmapProc generateMipmap = nullptr;
 ActiveTextureProc activeTexture = nullptr;
 DeleteTexturesProc deleteTextures = nullptr;
+GenFramebuffersProc genFramebuffers = nullptr;
+BindFramebufferProc bindFramebuffer = nullptr;
+FramebufferTexture2DProc framebufferTexture2D = nullptr;
+CheckFramebufferStatusProc checkFramebufferStatus = nullptr;
+DeleteFramebuffersProc deleteFramebuffers = nullptr;
+TexParameterfvProc texParameterfv = nullptr;
 
 template <typename T>
 T loadFunction(const char* name)
@@ -91,16 +97,23 @@ bool load()
     bindTexture = loadFunction<BindTextureProc>("glBindTexture");
     texImage2D = loadFunction<TexImage2DProc>("glTexImage2D");
     texParameteri = loadFunction<TexParameteriProc>("glTexParameteri");
+    texParameterfv = loadFunction<TexParameterfvProc>("glTexParameterfv");
     generateMipmap = loadFunction<GenerateMipmapProc>("glGenerateMipmap");
     activeTexture = loadFunction<ActiveTextureProc>("glActiveTexture");
     deleteTextures = loadFunction<DeleteTexturesProc>("glDeleteTextures");
+    genFramebuffers = loadFunction<GenFramebuffersProc>("glGenFramebuffers");
+    bindFramebuffer = loadFunction<BindFramebufferProc>("glBindFramebuffer");
+    framebufferTexture2D = loadFunction<FramebufferTexture2DProc>("glFramebufferTexture2D");
+    checkFramebufferStatus = loadFunction<CheckFramebufferStatusProc>("glCheckFramebufferStatus");
+    deleteFramebuffers = loadFunction<DeleteFramebuffersProc>("glDeleteFramebuffers");
 
     return createShader && shaderSource && compileShader && getShaderiv && getShaderInfoLog && deleteShader &&
            createProgram && attachShader && linkProgram && getProgramiv && getProgramInfoLog && useProgram &&
            deleteProgram && getUniformLocation && uniformMatrix4fv && uniform3f && uniform1f && uniform1i && genVertexArrays &&
            bindVertexArray && deleteVertexArrays && genBuffers && bindBuffer && bufferData && deleteBuffers &&
            enableVertexAttribArray && vertexAttribPointer && vertexAttribDivisor && drawElements && drawElementsInstanced && genTextures && bindTexture && texImage2D &&
-           texParameteri && generateMipmap && activeTexture && deleteTextures;
+           texParameteri && texParameterfv && generateMipmap && activeTexture && deleteTextures && genFramebuffers && bindFramebuffer && framebufferTexture2D &&
+           checkFramebufferStatus && deleteFramebuffers;
 }
 
 } // namespace plunger::gl

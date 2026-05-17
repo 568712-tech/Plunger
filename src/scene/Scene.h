@@ -26,6 +26,7 @@ public:
 
     void setParent(EntityId child, EntityId parent);
     void updateTransforms();
+    void markDirty(EntityId entity);
 
     template <typename Callback>
     void forEachRenderable(Callback&& callback) const
@@ -64,7 +65,6 @@ public:
     }
 
 private:
-    void markDirty(EntityId entity);
     void updateWorldRecursive(EntityId entity, const Mat4& parentWorld);
 
     EntityId m_nextEntityId = 1;

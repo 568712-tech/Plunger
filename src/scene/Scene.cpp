@@ -29,6 +29,7 @@ void Scene::destroyEntity(EntityId entity)
     }
 
     m_meshRenderers.erase(entity);
+    m_parts.erase(entity);
 }
 
 Transform& Scene::addTransform(EntityId entity)

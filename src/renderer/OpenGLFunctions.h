@@ -76,6 +76,21 @@ constexpr GLenum GL_RGBA = 0x1908;
 #ifndef GL_UNSIGNED_BYTE
 constexpr GLenum GL_UNSIGNED_BYTE = 0x1401;
 #endif
+#ifndef GL_FRAMEBUFFER
+constexpr GLenum GL_FRAMEBUFFER = 0x8D40;
+#endif
+#ifndef GL_DEPTH_ATTACHMENT
+constexpr GLenum GL_DEPTH_ATTACHMENT = 0x8D00;
+#endif
+#ifndef GL_FRAMEBUFFER_COMPLETE
+constexpr GLenum GL_FRAMEBUFFER_COMPLETE = 0x8CD5;
+#endif
+#ifndef GL_CLAMP_TO_BORDER
+constexpr GLenum GL_CLAMP_TO_BORDER = 0x812D;
+#endif
+#ifndef GL_TEXTURE_BORDER_COLOR
+constexpr GLenum GL_TEXTURE_BORDER_COLOR = 0x1004;
+#endif
 
 namespace plunger::gl {
 
@@ -118,6 +133,12 @@ using TexParameteriProc = void (*)(GLenum, GLenum, GLint);
 using GenerateMipmapProc = void (*)(GLenum);
 using ActiveTextureProc = void (*)(GLenum);
 using DeleteTexturesProc = void (*)(GLsizei, const GLuint*);
+using GenFramebuffersProc = void (*)(GLsizei, GLuint*);
+using BindFramebufferProc = void (*)(GLenum, GLuint);
+using FramebufferTexture2DProc = void (*)(GLenum, GLenum, GLenum, GLuint, GLint);
+using CheckFramebufferStatusProc = GLenum (*)(GLenum);
+using DeleteFramebuffersProc = void (*)(GLsizei, const GLuint*);
+using TexParameterfvProc = void (*)(GLenum, GLenum, const GLfloat*);
 
 extern CreateShaderProc createShader;
 extern ShaderSourceProc shaderSource;
@@ -155,9 +176,15 @@ extern GenTexturesProc genTextures;
 extern BindTextureProc bindTexture;
 extern TexImage2DProc texImage2D;
 extern TexParameteriProc texParameteri;
+extern TexParameterfvProc texParameterfv;
 extern GenerateMipmapProc generateMipmap;
 extern ActiveTextureProc activeTexture;
 extern DeleteTexturesProc deleteTextures;
+extern GenFramebuffersProc genFramebuffers;
+extern BindFramebufferProc bindFramebuffer;
+extern FramebufferTexture2DProc framebufferTexture2D;
+extern CheckFramebufferStatusProc checkFramebufferStatus;
+extern DeleteFramebuffersProc deleteFramebuffers;
 
 bool load();
 

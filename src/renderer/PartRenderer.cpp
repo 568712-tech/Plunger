@@ -21,7 +21,7 @@ struct Vertex {
 
 } // namespace
 
-void PartRenderer::initialize(Scene& scene, const std::filesystem::path& mapPath)
+void PartRenderer::initialize(Scene& scene, const std::filesystem::path& assetRoot, const std::filesystem::path& mapPath)
 {
     m_scene = &scene;
 
@@ -35,26 +35,46 @@ void PartRenderer::initialize(Scene& scene, const std::filesystem::path& mapPath
 
     uploadGeometry();
 
-    m_shader.loadFromFiles(mapPath.parent_path().parent_path() / "shaders" / "part.vert", mapPath.parent_path().parent_path() / "shaders" / "part.frag");
+    m_shader.loadFromFiles(assetRoot / "shaders" / "part.vert", assetRoot / "shaders" / "part.frag");
 }
 
-void PartRenderer::render(const Mat4& view, const Mat4& projection, float timeSeconds) const
+void PartRenderer::renderShadowPass(Shader& shadowShader, const Mat4& lightSpace, float timeSeconds) const
+{
+    uploadInstances(timeSeconds);
+
+    shadowShader.bind();
+    shadowShader.setMat4("uLightSpace", lightSpace);
+
+    gl::bindVertexArray(m_vertexArray);
+    gl::drawElementsInstanced(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr, static_cast<GLsizei>(m_instances.size()));
+    gl::bindVertexArray(0);
+
+    shadowShader.unbind();
+}
+
+void PartRenderer::render(const Mat4& view,
+    const Mat4& projection,
+    const Mat4& lightSpace,
+    const Vec3& cameraPosition,
+    const LightingEnvironment& lighting,
+    GLuint shadowMapTexture,
+    float timeSeconds) const
 {
     uploadInstances(timeSeconds);
 
     m_shader.bind();
     m_shader.setMat4("uView", view);
     m_shader.setMat4("uProjection", projection);
-    m_shader.setVec3("uLightDirection", normalize({-0.4f, -1.f, -0.25f}));
-    m_shader.setVec3("uBaseColor", {1.f, 1.f, 1.f});
+    m_shader.setMat4("uLightSpace", lightSpace);
+    m_shader.setVec3("uCameraPosition", cameraPosition);
+    lighting.apply(m_shader);
+    m_shader.setFloat("uMaterialRoughness", 0.85f);
+    m_shader.setFloat("uMaterialMetallic", 0.05f);
+    m_shader.setInt("uShadowMap", 1);
+    gl::activeTexture(GL_TEXTURE0 + 1);
+    gl::bindTexture(GL_TEXTURE_2D, shadowMapTexture);
 
     gl::bindVertexArray(m_vertexArray);
-    gl::bindBuffer(GL_ARRAY_BUFFER, m_instanceBuffer);
-    gl::bufferData(GL_ARRAY_BUFFER,
-        static_cast<GLsizeiptr>(m_instances.size() * sizeof(InstanceData)),
-        m_instances.data(),
-        GL_DYNAMIC_DRAW);
-
     gl::drawElementsInstanced(GL_TRIANGLES,
         36,
         GL_UNSIGNED_INT,
@@ -63,6 +83,33 @@ void PartRenderer::render(const Mat4& view, const Mat4& projection, float timeSe
 
     gl::bindVertexArray(0);
     m_shader.unbind();
+}
+
+void PartRenderer::reloadResources(const std::filesystem::path& assetRoot)
+{
+    m_shader.loadFromFiles(assetRoot / "shaders" / "part.vert", assetRoot / "shaders" / "part.frag");
+    releaseGeometry();
+    uploadGeometry();
+}
+
+void PartRenderer::releaseGeometry()
+{
+    if (m_instanceBuffer != 0) {
+        gl::deleteBuffers(1, &m_instanceBuffer);
+        m_instanceBuffer = 0;
+    }
+    if (m_indexBuffer != 0) {
+        gl::deleteBuffers(1, &m_indexBuffer);
+        m_indexBuffer = 0;
+    }
+    if (m_vertexBuffer != 0) {
+        gl::deleteBuffers(1, &m_vertexBuffer);
+        m_vertexBuffer = 0;
+    }
+    if (m_vertexArray != 0) {
+        gl::deleteVertexArrays(1, &m_vertexArray);
+        m_vertexArray = 0;
+    }
 }
 
 void PartRenderer::uploadGeometry()

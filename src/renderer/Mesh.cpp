@@ -158,6 +158,24 @@ void Mesh::upload()
     gl::bindVertexArray(0);
 }
 
+void Mesh::reload()
+{
+    if (m_vertexArray != 0) {
+        gl::deleteVertexArrays(1, &m_vertexArray);
+        m_vertexArray = 0;
+    }
+    if (m_vertexBuffer != 0) {
+        gl::deleteBuffers(1, &m_vertexBuffer);
+        m_vertexBuffer = 0;
+    }
+    if (m_indexBuffer != 0) {
+        gl::deleteBuffers(1, &m_indexBuffer);
+        m_indexBuffer = 0;
+    }
+
+    upload();
+}
+
 void Mesh::draw() const
 {
     gl::bindVertexArray(m_vertexArray);

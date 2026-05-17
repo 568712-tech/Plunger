@@ -5,20 +5,94 @@
 
 #include <cmath>
 #include <filesystem>
-#include <utility>
 #include <stdexcept>
+#include <utility>
 
 namespace plunger {
+
+namespace {
+constexpr GLenum GL_NONE_ENUM = 0;
+}
+
+void Renderer::initializeShadowResources()
+{
+    gl::genFramebuffers(1, &m_shadowFramebuffer);
+    gl::genTextures(1, &m_shadowDepthTexture);
+
+    gl::bindTexture(GL_TEXTURE_2D, m_shadowDepthTexture);
+    gl::texImage2D(GL_TEXTURE_2D,
+        0,
+        GL_DEPTH_COMPONENT,
+        static_cast<GLsizei>(m_shadowMapSize),
+        static_cast<GLsizei>(m_shadowMapSize),
+        0,
+        GL_DEPTH_COMPONENT,
+        GL_FLOAT,
+        nullptr);
+    gl::texParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    gl::texParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    gl::texParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    gl::texParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    const float borderColor[4] = {1.f, 1.f, 1.f, 1.f};
+    gl::texParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+    gl::bindFramebuffer(GL_FRAMEBUFFER, m_shadowFramebuffer);
+    gl::framebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_shadowDepthTexture, 0);
+    glDrawBuffer(GL_NONE_ENUM);
+    glReadBuffer(GL_NONE_ENUM);
+
+    if (gl::checkFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        throw std::runtime_error("Failed to create shadow framebuffer");
+    }
+
+    gl::bindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+Mat4 Renderer::buildLightSpaceMatrix() const
+{
+    const Vec3 lightDirection = normalize(m_lighting.lightDirection);
+    const Vec3 lightPosition = lightDirection * -18.f;
+    const Mat4 lightView = lookAt(lightPosition, {0.f, 0.f, 2.f}, {0.f, 1.f, 0.f});
+    const Mat4 lightProjection = orthographic(-20.f, 20.f, -20.f, 20.f, 1.f, 45.f);
+    return multiply(lightProjection, lightView);
+}
+
+void Renderer::renderShadowPass(const Mat4& lightSpace, float timeSeconds)
+{
+    glViewport(0, 0, static_cast<GLsizei>(m_shadowMapSize), static_cast<GLsizei>(m_shadowMapSize));
+    gl::bindFramebuffer(GL_FRAMEBUFFER, m_shadowFramebuffer);
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    glCullFace(GL_FRONT);
+
+    m_shadowShader.bind();
+    m_shadowShader.setMat4("uLightSpace", lightSpace);
+    m_scene.forEachRenderable([&](const Entity&, const Transform& transform, const MeshRenderer& meshRenderer) {
+        m_shadowShader.setMat4("uModel", transform.worldMatrix);
+        meshRenderer.mesh->draw();
+    });
+    m_shadowShader.unbind();
+
+    m_partRenderer.renderShadowPass(m_partShadowShader, lightSpace, timeSeconds);
+
+    glCullFace(GL_BACK);
+    gl::bindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, static_cast<GLsizei>(m_viewportSize.x), static_cast<GLsizei>(m_viewportSize.y));
+}
 
 void Renderer::initialize(const std::filesystem::path& assetRoot)
 {
     m_assetRoot = assetRoot;
+    m_lighting = LightingEnvironment::createDemo();
 
     if (!gl::load()) {
         throw std::runtime_error("Failed to load modern OpenGL entry points");
     }
 
     m_shader.loadFromFiles(m_assetRoot / "shaders" / "geometry.vert", m_assetRoot / "shaders" / "geometry.frag");
+    m_shadowShader.loadFromFiles(m_assetRoot / "shaders" / "shadow_depth.vert", m_assetRoot / "shaders" / "shadow_depth.frag");
+    m_partShadowShader.loadFromFiles(m_assetRoot / "shaders" / "shadow_depth_part.vert", m_assetRoot / "shaders" / "shadow_depth.frag");
+    initializeShadowResources();
 
     const std::filesystem::path gltfPath = m_assetRoot / "models" / "cube.gltf";
     if (std::filesystem::exists(gltfPath)) {
@@ -31,8 +105,8 @@ void Renderer::initialize(const std::filesystem::path& assetRoot)
         m_modelMesh = ModelLoader::loadObj(m_assetRoot / "models" / "cube.obj");
         m_modelMaterial.baseColor = {1.f, 1.f, 1.f};
     }
-    m_floorMesh = Mesh::createPlane(14.f);
-    m_partRenderer.initialize(m_scene, m_assetRoot / "maps" / "demo.json");
+    m_floorMesh = Mesh::createPlane(30.f);
+    m_partRenderer.initialize(m_scene, m_assetRoot, m_assetRoot / "maps" / "demo.json");
 
     if (!m_texture.loadFromFile(m_assetRoot / "textures" / "cube.png")) {
         m_texture.createCheckerboard(128, 128, 16);
@@ -43,33 +117,93 @@ void Renderer::initialize(const std::filesystem::path& assetRoot)
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
-    m_floorEntity = m_scene.createEntity();
-    Transform& floorTransform = m_scene.addTransform(m_floorEntity);
-    floorTransform.position = {0.f, -1.15f, 0.f};
+    const EntityId floorEntity = m_scene.createEntity();
+    Transform& floorTransform = m_scene.addTransform(floorEntity);
+    floorTransform.position = {0.f, -2.05f, 0.f};
     floorTransform.scaleFactor = {1.f, 1.f, 1.f};
     floorTransform.rebuildLocalMatrix();
-    MeshRenderer& floorRenderer = m_scene.addMeshRenderer(m_floorEntity, &m_floorMesh, &m_texture);
+    MeshRenderer& floorRenderer = m_scene.addMeshRenderer(floorEntity, &m_floorMesh, &m_texture);
     floorRenderer.material.baseColor = {1.f, 1.f, 1.f};
 
     m_centerCubeEntity = m_scene.createEntity();
     Transform& cubeTransform = m_scene.addTransform(m_centerCubeEntity);
-    cubeTransform.position = {0.f, 0.5f, -6.f};
-    cubeTransform.scaleFactor = {1.f, 1.f, 1.f};
+    cubeTransform.position = {0.f, 0.75f, -2.5f};
+    cubeTransform.scaleFactor = {1.2f, 1.2f, 1.2f};
     cubeTransform.rebuildLocalMatrix();
     MeshRenderer& centerRenderer = m_scene.addMeshRenderer(m_centerCubeEntity, &m_modelMesh, &m_texture);
     centerRenderer.material = m_modelMaterial;
 
     m_satelliteCubeEntity = m_scene.createEntity();
     Transform& satelliteTransform = m_scene.addTransform(m_satelliteCubeEntity);
-    satelliteTransform.position = {2.8f, 1.0f, 0.f};
-    satelliteTransform.scaleFactor = {0.7f, 0.7f, 0.7f};
+    satelliteTransform.position = {3.4f, 1.1f, 0.4f};
+    satelliteTransform.scaleFactor = {0.75f, 0.75f, 0.75f};
     satelliteTransform.rebuildLocalMatrix();
     MeshRenderer& satelliteRenderer = m_scene.addMeshRenderer(m_satelliteCubeEntity, &m_modelMesh, &m_texture);
     satelliteRenderer.material = m_modelMaterial;
 
     m_scene.setParent(m_satelliteCubeEntity, m_centerCubeEntity);
 
-    m_camera.setPitch(-0.1f);
+    {
+        const EntityId leftTower = m_scene.createEntity();
+        Transform& leftTransform = m_scene.addTransform(leftTower);
+        leftTransform.position = {-5.0f, 1.2f, 4.5f};
+        leftTransform.scaleFactor = {1.0f, 2.4f, 1.0f};
+        leftTransform.rebuildLocalMatrix();
+        MeshRenderer& leftRenderer = m_scene.addMeshRenderer(leftTower, &m_modelMesh, &m_texture);
+        leftRenderer.material.baseColor = {0.45f, 0.65f, 0.85f};
+    }
+
+    {
+        const EntityId rightTower = m_scene.createEntity();
+        Transform& rightTransform = m_scene.addTransform(rightTower);
+        rightTransform.position = {5.0f, 1.2f, 4.5f};
+        rightTransform.scaleFactor = {1.0f, 2.4f, 1.0f};
+        rightTransform.rebuildLocalMatrix();
+        MeshRenderer& rightRenderer = m_scene.addMeshRenderer(rightTower, &m_modelMesh, &m_texture);
+        rightRenderer.material.baseColor = {0.78f, 0.64f, 0.35f};
+    }
+
+    {
+        const EntityId floatingCube = m_scene.createEntity();
+        Transform& floatingTransform = m_scene.addTransform(floatingCube);
+        floatingTransform.position = {0.f, 3.4f, 5.5f};
+        floatingTransform.scaleFactor = {0.8f, 0.8f, 0.8f};
+        floatingTransform.rebuildLocalMatrix();
+        MeshRenderer& floatingRenderer = m_scene.addMeshRenderer(floatingCube, &m_modelMesh, &m_texture);
+        floatingRenderer.material.baseColor = {0.96f, 0.74f, 0.32f};
+    }
+
+    m_camera.setPosition({0.f, 3.4f, 10.5f});
+    m_camera.setYaw(-1.57079633f);
+    m_camera.setPitch(-0.16f);
+}
+
+void Renderer::reloadResources(const std::filesystem::path& assetRoot)
+{
+    m_assetRoot = assetRoot;
+    m_lighting = LightingEnvironment::createDemo();
+
+    if (!gl::load()) {
+        throw std::runtime_error("Failed to load modern OpenGL entry points");
+    }
+
+    m_shader.loadFromFiles(m_assetRoot / "shaders" / "geometry.vert", m_assetRoot / "shaders" / "geometry.frag");
+    m_shadowShader.loadFromFiles(m_assetRoot / "shaders" / "shadow_depth.vert", m_assetRoot / "shaders" / "shadow_depth.frag");
+    m_partShadowShader.loadFromFiles(m_assetRoot / "shaders" / "shadow_depth_part.vert", m_assetRoot / "shaders" / "shadow_depth.frag");
+    initializeShadowResources();
+
+    m_modelMesh.reload();
+    m_floorMesh.reload();
+    m_partRenderer.reloadResources(m_assetRoot);
+
+    if (!m_texture.loadFromFile(m_assetRoot / "textures" / "cube.png")) {
+        m_texture.createCheckerboard(128, 128, 16);
+    }
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 }
 
 void Renderer::resize(sf::Vector2u size)
@@ -83,13 +217,23 @@ void Renderer::resize(sf::Vector2u size)
     glViewport(0, 0, static_cast<GLsizei>(size.x), static_cast<GLsizei>(size.y));
 }
 
+void Renderer::update(float /*deltaTime*/, float timeSeconds)
+{
+    updateSimulation(timeSeconds);
+    m_scene.updateTransforms();
+}
+
+void Renderer::updateSimulation(float timeSeconds)
+{
+    if (Transform* cube = m_scene.getTransform(m_centerCubeEntity); cube != nullptr) {
+        cube->rotation = {timeSeconds * 0.45f, timeSeconds * 0.8f, 0.f};
+        cube->rebuildLocalMatrix();
+        m_scene.markDirty(m_centerCubeEntity);
+    }
+}
+
 void Renderer::render(float timeSeconds)
 {
-    const float orbitAngle = timeSeconds * 0.35f;
-    m_camera.setPosition({std::cos(orbitAngle) * 7.0f, 2.6f, std::sin(orbitAngle) * 7.0f});
-    m_camera.setYaw(orbitAngle + 3.14159265f);
-    m_camera.setPitch(-0.28f);
-
     const float clearRed = 0.06f + 0.03f * std::sin(timeSeconds * 0.8f);
     const float clearGreen = 0.08f + 0.03f * std::sin(timeSeconds * 1.1f + 1.0f);
     const float clearBlue = 0.12f + 0.04f * std::sin(timeSeconds * 1.5f + 2.0f);
@@ -97,28 +241,32 @@ void Renderer::render(float timeSeconds)
     glClearColor(clearRed, clearGreen, clearBlue, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-    if (Transform* cube = m_scene.getTransform(m_centerCubeEntity); cube != nullptr) {
-        cube->rotation = {timeSeconds * 0.45f, timeSeconds * 0.8f, 0.f};
-        cube->rebuildLocalMatrix();
-    }
-
     const Mat4 view = m_camera.viewMatrix();
     const Mat4 projection = m_camera.projectionMatrix();
-    m_scene.updateTransforms();
+    const Mat4 lightSpace = buildLightSpaceMatrix();
+    renderShadowPass(lightSpace, timeSeconds);
 
-    m_partRenderer.render(view, projection, timeSeconds);
+    const Vec3 cameraPosition = m_camera.position();
+    m_partRenderer.render(view, projection, lightSpace, cameraPosition, m_lighting, m_shadowDepthTexture, timeSeconds);
 
     m_shader.bind();
     m_shader.setMat4("uView", view);
     m_shader.setMat4("uProjection", projection);
-    m_shader.setVec3("uLightDirection", normalize({-0.4f, -1.f, -0.25f}));
+    m_shader.setMat4("uLightSpace", lightSpace);
+    m_shader.setVec3("uCameraPosition", cameraPosition);
+    m_lighting.apply(m_shader);
     m_shader.setInt("uTexture", 0);
+    m_shader.setInt("uShadowMap", 1);
     m_shader.setVec3("uBaseColor", {1.f, 1.f, 1.f});
     m_texture.bind(0);
+    gl::activeTexture(GL_TEXTURE0 + 1);
+    gl::bindTexture(GL_TEXTURE_2D, m_shadowDepthTexture);
 
     m_scene.forEachRenderable([&](const Entity&, const Transform& transform, const MeshRenderer& meshRenderer) {
         m_shader.setMat4("uModel", transform.worldMatrix);
         m_shader.setVec3("uBaseColor", meshRenderer.material.baseColor);
+        m_shader.setFloat("uMaterialRoughness", meshRenderer.material.roughness);
+        m_shader.setFloat("uMaterialMetallic", meshRenderer.material.metallic);
         meshRenderer.mesh->draw();
     });
     m_shader.unbind();

@@ -160,6 +160,18 @@ inline Mat4 perspective(float fieldOfViewRadians, float aspectRatio, float nearP
     return matrix;
 }
 
+inline Mat4 orthographic(float left, float right, float bottom, float top, float nearPlane, float farPlane)
+{
+    Mat4 matrix = Mat4::identity();
+    matrix.values[0] = 2.f / (right - left);
+    matrix.values[5] = 2.f / (top - bottom);
+    matrix.values[10] = -2.f / (farPlane - nearPlane);
+    matrix.values[12] = -(right + left) / (right - left);
+    matrix.values[13] = -(top + bottom) / (top - bottom);
+    matrix.values[14] = -(farPlane + nearPlane) / (farPlane - nearPlane);
+    return matrix;
+}
+
 inline Mat4 lookAt(const Vec3& eye, const Vec3& center, const Vec3& up)
 {
     const Vec3 forward = normalize(center - eye);

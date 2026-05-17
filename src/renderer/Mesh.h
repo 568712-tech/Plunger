@@ -29,6 +29,7 @@ public:
     static Mesh createPlane(float size = 10.f);
     static Mesh fromData(std::vector<Vertex> vertices, std::vector<unsigned int> indices);
     void draw() const;
+    void reload();
 
 private:
     Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices);

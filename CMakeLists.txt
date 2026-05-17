@@ -10,7 +10,11 @@ find_package(SFML 3 COMPONENTS Graphics Window System REQUIRED)
 
 add_executable(Plunger
 	src/main.cpp
+	src/core/Engine.cpp
+	src/game/FlyCameraController.cpp
+	src/input/Input.cpp
 	src/renderer/Camera.cpp
+	src/renderer/Lighting.cpp
 	src/renderer/Mesh.cpp
 	src/renderer/OpenGLFunctions.cpp
 	src/renderer/PartRenderer.cpp
