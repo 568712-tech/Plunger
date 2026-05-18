@@ -2,6 +2,7 @@
 
 #include "game/FlyCameraController.h"
 #include "input/Input.h"
+#include "physics/PhysicsWorld.h"
 #include "renderer/Renderer.h"
 #include "game/Character.h"
 
@@ -30,11 +31,13 @@ private:
     bool reachedGoal() const;
     void logContextInfo();
     void toggleFullscreen();
+    void setupPhysicsColliders();
 
     sf::Window m_window;
     sf::ContextSettings m_contextSettings;
     sf::Vector2u m_windowedSize {1280u, 720u};
     Renderer m_renderer;
+    PhysicsWorld m_physics;
     Input m_input;
     FlyCameraController m_cameraController;
     sf::Clock m_clock;

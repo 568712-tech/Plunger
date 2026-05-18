@@ -11,8 +11,6 @@ namespace {
 constexpr float PI            = 3.14159265f;
 constexpr float baseSpeed     = 5.0f;
 constexpr float runMultiplier = 1.8f;
-constexpr float jumpVelocity  = 6.0f;
-constexpr float gravity       = -18.0f;
 
 float smoothLerp(float a, float b, float stiffness, float dt)
 {
@@ -122,10 +120,25 @@ Character::Character(Scene& scene,
     );
 }
 
+void Character::setPosition(const Vec3& pos)
+{
+    m_position = pos;
+    m_physicsState.verticalVelocity = 0.f;
+    m_physicsState.onGround = true;
+}
+
+void Character::collectExcludedEntities(std::unordered_set<EntityId>& excluded) const
+{
+    for (const PartRecord& partRecord : m_parts) {
+        excluded.insert(partRecord.id);
+    }
+}
+
 void Character::update(float deltaTime,
                        float timeSeconds,
                        const Input& input,
-                       const Camera& camera)
+                       const Camera& camera,
+                       const PhysicsWorld& physics)
 {
     (void)timeSeconds;
 
@@ -208,32 +221,23 @@ void Character::update(float deltaTime,
     const float speed =
         baseSpeed * (running ? runMultiplier : 1.f);
 
-    if (moving) {
+    const Vec3 horizontalDelta {
+        moving ? moveDir.x * speed * deltaTime : 0.f,
+        0.f,
+        moving ? moveDir.z * speed * deltaTime : 0.f,
+    };
 
-        m_position.x += moveDir.x * speed * deltaTime;
-        m_position.z += moveDir.z * speed * deltaTime;
-    }
+    const bool jumpRequested =
+        input.isKeyDown(sf::Keyboard::Key::Space) && m_physicsState.onGround;
 
-    if (input.isKeyDown(sf::Keyboard::Key::Space) &&
-        m_onGround)
-    {
-        m_verticalVelocity = jumpVelocity;
-        m_onGround         = false;
-    }
+    physics.simulateCharacter(
+        m_position,
+        m_physicsState,
+        horizontalDelta,
+        jumpRequested,
+        deltaTime);
 
-    m_verticalVelocity += gravity * deltaTime;
-
-    m_position.y +=
-        m_verticalVelocity * deltaTime;
-
-    if (m_position.y <= 0.f) {
-
-        m_position.y       = 0.f;
-        m_verticalVelocity = 0.f;
-        m_onGround         = true;
-    }
-
-    const bool jumping = !m_onGround;
+    const bool jumping = !m_physicsState.onGround;
 
     const bool rightDown =
         sf::Mouse::isButtonPressed(

@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <filesystem>
+#include <unordered_set>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -49,6 +50,7 @@ Engine::Engine()
     resetDemoRun();
     // Create player character after renderer and scene are initialized
     m_player = std::make_unique<Character>(m_renderer.scene(), m_spawnPosition, 0.0f);
+    setupPhysicsColliders();
     m_renderer.resize(m_window.getSize());
     logContextInfo();
 }
@@ -99,12 +101,31 @@ void Engine::processEvents()
     m_input.beginFrame(m_window);
 }
 
+void Engine::setupPhysicsColliders()
+{
+    m_physics.clearStaticColliders();
+
+    constexpr float floorHalfExtent = 15.f;
+    constexpr float floorTopY = -2.05f;
+    m_physics.addStaticAabb({
+        {-floorHalfExtent, floorTopY - 0.05f, -floorHalfExtent},
+        {floorHalfExtent, floorTopY, floorHalfExtent},
+    });
+}
+
 void Engine::update(float deltaTime)
 {
     m_simulationTime += deltaTime;
     m_cameraController.update(m_renderer.camera(), m_input, deltaTime);
+
+    std::unordered_set<EntityId> excludedEntities;
     if (m_player) {
-        m_player->update(deltaTime, m_simulationTime, m_input, m_renderer.camera());
+        m_player->collectExcludedEntities(excludedEntities);
+    }
+    m_physics.rebuildFromScene(m_renderer.scene(), m_simulationTime, excludedEntities);
+
+    if (m_player) {
+        m_player->update(deltaTime, m_simulationTime, m_input, m_renderer.camera(), m_physics);
     }
     m_renderer.update(deltaTime, m_simulationTime);
 
@@ -183,7 +204,10 @@ void Engine::updateWindowTitle()
 
 bool Engine::reachedGoal() const
 {
-    return insideAabb(m_renderer.camera().position(), m_goalCenter, m_goalHalfExtents);
+    const Vec3 goalSample = m_player
+        ? Vec3 {m_player->position().x, m_player->position().y + 1.2f, m_player->position().z}
+        : m_renderer.camera().position();
+    return insideAabb(goalSample, m_goalCenter, m_goalHalfExtents);
 }
 
 void Engine::logContextInfo()
@@ -196,8 +220,8 @@ void Engine::logContextInfo()
     std::cout << "Vendor: " << glString(GL_VENDOR) << '\n';
     std::cout << "Renderer: " << glString(GL_RENDERER) << '\n';
     std::cout << "Version: " << glString(GL_VERSION) << '\n';
-    std::cout << "Controls: WASD move, Space up, Shift down, LMB look, R reset, F11 toggle fullscreen\n";
-    std::cout << "Objective: fly from the launch pad to the glowing finish gate.\n";
+    std::cout << "Controls: WASD move, Space jump, Shift run, LMB look, R reset, F11 toggle fullscreen\n";
+    std::cout << "Objective: run the obstacle course to the glowing finish gate.\n";
 }
 
 void Engine::toggleFullscreen()
@@ -217,6 +241,7 @@ void Engine::toggleFullscreen()
 
     m_input.resetMouseState(m_window);
     m_renderer.reloadResources(m_assetRoot);
+    setupPhysicsColliders();
     m_renderer.resize(m_window.getSize());
     updateWindowTitle();
 }

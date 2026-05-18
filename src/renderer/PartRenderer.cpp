@@ -2,6 +2,7 @@
 
 #include "renderer/OpenGLFunctions.h"
 #include "scene/PartMapLoader.h"
+#include "scene/PartMotion.h"
 
 #include <array>
 #include <cmath>
@@ -24,52 +25,6 @@ constexpr int capsuleHemisphereSegments = 8;
 std::size_t shapeIndex(PartShape shape)
 {
     return static_cast<std::size_t>(shape);
-}
-
-Mat4 composeModelMatrix(const Part& part, float timeSeconds, std::size_t index)
-{
-    // Calculate bobbing motion
-    const float bob = part.bobAmplitude * std::sin(timeSeconds * 1.2f + static_cast<float>(index) * 0.35f);
-    
-    // Calculate position with all motion types
-    Vec3 finalPosition = part.position;
-    finalPosition.y += bob;
-    
-    // Circular motion
-    if (part.circleRadius > 0.f) {
-        const float circlePhase = timeSeconds * part.circleSpeed;
-        if (part.circleAxisY > 0.5f) {
-            // Rotate around Y axis (horizontal circle)
-            finalPosition.x += part.circleRadius * std::cos(circlePhase);
-            finalPosition.z += part.circleRadius * std::sin(circlePhase);
-        } else {
-            // Rotate around X axis (vertical circle in XY plane)
-            finalPosition.y += part.circleRadius * std::sin(circlePhase);
-            finalPosition.z += part.circleRadius * std::cos(circlePhase);
-        }
-    }
-    
-    // Side-to-side sway motion
-    if (part.swayAmplitude > 0.f) {
-        finalPosition.x += part.swayAmplitude * std::sin(timeSeconds * part.swaySpeed + static_cast<float>(index) * 0.5f);
-    }
-    
-    const Mat4 translation = translate(finalPosition);
-    
-    // Calculate rotation with spin
-    float rotX = part.rotation.x;
-    float rotY = part.rotation.y;
-    float rotZ = part.rotation.z;
-    
-    if (part.spinSpeed != 0.f) {
-        // Add spin to Y rotation
-        rotY += timeSeconds * part.spinSpeed;
-    }
-    
-    const Mat4 rotationX = rotateX(rotX);
-    const Mat4 rotationY = rotateY(rotY);
-    const Mat4 rotationZ = rotateZ(rotZ);
-    return multiply(translation, multiply(rotationY, multiply(rotationX, multiply(rotationZ, scale(part.size)))));
 }
 
 void appendTriangle(std::vector<PartRenderer::Vertex>& vertices,
@@ -753,7 +708,7 @@ void PartRenderer::uploadInstances(float timeSeconds) const
         const std::size_t geometryIndex = shapeIndex(part.shape);
         Geometry& geometry = m_geometries[geometryIndex];
         InstanceData& instance = geometry.instances[writeIndices[geometryIndex]++];
-        instance.model = composeModelMatrix(part, timeSeconds, partIndex);
+        instance.model = composePartModelMatrix(part, timeSeconds, partIndex);
         instance.color = part.material.baseColor;
         instance.roughness = part.material.roughness;
         instance.metallic = part.material.metallic;
