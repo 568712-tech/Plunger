@@ -59,23 +59,25 @@ inline void resolveAabbPenetration(Vec3& position, const Aabb& character, const 
         return;
     }
 
+    constexpr float separationBias = 1e-4f;
+
     if (overlapX <= overlapY && overlapX <= overlapZ) {
         const float characterCenterX = (character.min.x + character.max.x) * 0.5f;
         const float obstacleCenterX = (obstacle.min.x + obstacle.max.x) * 0.5f;
-        position.x += (characterCenterX < obstacleCenterX) ? -overlapX : overlapX;
+        position.x += (characterCenterX < obstacleCenterX) ? -(overlapX + separationBias) : (overlapX + separationBias);
         return;
     }
 
     if (overlapY <= overlapZ) {
         const float characterCenterY = (character.min.y + character.max.y) * 0.5f;
         const float obstacleCenterY = (obstacle.min.y + obstacle.max.y) * 0.5f;
-        position.y += (characterCenterY < obstacleCenterY) ? -overlapY : overlapY;
+        position.y += (characterCenterY < obstacleCenterY) ? -(overlapY + separationBias) : (overlapY + separationBias);
         return;
     }
 
     const float characterCenterZ = (character.min.z + character.max.z) * 0.5f;
     const float obstacleCenterZ = (obstacle.min.z + obstacle.max.z) * 0.5f;
-    position.z += (characterCenterZ < obstacleCenterZ) ? -overlapZ : overlapZ;
+    position.z += (characterCenterZ < obstacleCenterZ) ? -(overlapZ + separationBias) : (overlapZ + separationBias);
 }
 
 inline void resolveSpherePenetration(Vec3& position, const Aabb& character, const SphereCollider& sphere)

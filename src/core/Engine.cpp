@@ -105,8 +105,9 @@ void Engine::setupPhysicsColliders()
 {
     m_physics.clearStaticColliders();
 
-    constexpr float floorHalfExtent = 15.f;
-    constexpr float floorTopY = -2.05f;
+    // Match the static collider to the visible floor in `assets/maps/demo.json`
+    constexpr float floorHalfExtent = 22.f;
+    constexpr float floorTopY = -2.8f;
     m_physics.addStaticAabb({
         {-floorHalfExtent, floorTopY - 0.05f, -floorHalfExtent},
         {floorHalfExtent, floorTopY, floorHalfExtent},

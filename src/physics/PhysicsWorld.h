@@ -5,6 +5,7 @@
 #include "scene/Entity.h"
 
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 namespace plunger {
@@ -12,16 +13,18 @@ namespace plunger {
 class Scene;
 
 struct CharacterPhysicsSettings {
-    float halfWidth = 0.30f;
-    float height = 1.75f;
+    // Sized to match the Character body parts (torso width, head top).
+    float halfWidth = 0.29f;
+    float height = 1.58f;
     float gravity = -18.f;
-    float jumpVelocity = 9.f;
-    float groundSnapEpsilon = 0.08f;
+    float jumpVelocity = 10.f;
+    float groundSnapEpsilon = 0.02f;
 };
 
 struct CharacterPhysicsState {
     float verticalVelocity = 0.f;
     bool onGround = true;
+    Vec3 horizontalVelocity = {0.f, 0.f, 0.f};
 };
 
 class PhysicsWorld {
@@ -40,11 +43,21 @@ public:
                            const CharacterPhysicsSettings& settings = {}) const;
 
 private:
+    void resolveCharacterCollisions(Vec3& feetPosition, const CharacterPhysicsSettings& settings) const;
+    void snapToGround(Vec3& feetPosition, const CharacterPhysicsSettings& settings) const;
     bool probeGround(const Vec3& feetPosition, const CharacterPhysicsSettings& settings) const;
 
+    struct DynamicAabb {
+        EntityId id;
+        Aabb aabb;
+        Vec3 velocity = {0.f, 0.f, 0.f};
+    };
+
     std::vector<Aabb> m_staticAabbs;
-    std::vector<Aabb> m_dynamicAabbs;
+    std::vector<DynamicAabb> m_dynamicAabbs;
     std::vector<SphereCollider> m_spheres;
+    std::unordered_map<EntityId, Aabb> m_previousDynamicAabbs;
+    float m_lastRebuildTime = -1.f;
 };
 
 } // namespace plunger

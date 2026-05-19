@@ -125,6 +125,7 @@ void Character::setPosition(const Vec3& pos)
     m_position = pos;
     m_physicsState.verticalVelocity = 0.f;
     m_physicsState.onGround = true;
+    m_physicsState.horizontalVelocity = {0.f, 0.f, 0.f};
 }
 
 void Character::collectExcludedEntities(std::unordered_set<EntityId>& excluded) const
